@@ -1,2 +1,2 @@
-# BAS-C-HSRP-DHCP-InterVlanRouting-LAB
+# BASIC-HSRP-DHCP-InterVlanRouting-LAB
 Made Simple for Everyone HSRP-DHCP-InterVlanRouting
