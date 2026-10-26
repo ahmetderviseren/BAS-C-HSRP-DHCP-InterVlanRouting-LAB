@@ -1,2 +1,140 @@
-# BASIC-HSRP-DHCP-InterVlanRouting-LAB
-Made Simple for Everyone HSRP-DHCP-InterVlanRouting
+Enterprise Core Network Lab: Inter-VLAN Routing, LACP, HSRP, and DHCP Made Simple
+
+Welcome to this beginner-friendly yet comprehensive Cisco lab guide! If you are preparing for CCNA or looking to understand how enterprise core networks achieve high availability and automation, this step-by-step tutorial is for you.
+
+In this lab, we will build a resilient core network topology featuring Layer 3 Switches, LACP (EtherChannel), HSRP (Hot Standby Router Protocol), and an integrated DHCP Server.
+
+1. Topology Overview
+
+As shown in our network diagram:
+
+* **DSW1 & DSW2:** Layer 3 Switches acting as the core/distribution layer. They run HSRP for gateway redundancy and are connected via LACP (Port-Channel 1) over GigabitEthernet interfaces (G0/1 and G0/2).
+* **SW1:** Layer 2 Access Switch connected to DSW1 via port F0/24 to F0/23.
+* **PC2 (Client):** Connected to SW1 via port F0/1 (VLAN 10), obtaining its IP configuration dynamically via DHCP.
+
+ 2. Step-by-Step Configuration Guide
+
+Step 1: Configuring DSW1 (Primary L3 Switch & DHCP Server)
+
+DSW1 functions as the active HSRP gateway and hosts the DHCP server pool for VLAN 10.
+
+DSW1> enable
+DSW1# configure terminal
+DSW1(config)# hostname DSW1
+
+ Enable IP routing
+DSW1(config)# ip routing
+
+ Create VLAN 10
+DSW1(config)# vlan 10
+DSW1(config-vlan)# name Data
+DSW1(config-vlan)# exit
+
+ LACP EtherChannel to DSW2 (G0/1 and G0/2)
+DSW1(config)# interface range gigabitEthernet 0/1 - 2
+DSW1(config-if-range)# channel-group 1 mode active
+DSW1(config-if-range)# no shutdown
+DSW1(config-if-range)# exit
+
+DSW1(config)# interface port-channel 1
+DSW1(config-if)# switchport trunk encapsulation dot1q
+DSW1(config-if)# switchport mode trunk
+DSW1(config-if)# exit
+
+ Trunk link to SW1 (F0/24)
+DSW1(config)# interface fastEthernet 0/24
+DSW1(config-if)# switchport trunk encapsulation dot1q
+DSW1(config-if)# switchport mode trunk
+DSW1(config-if)# no shutdown
+DSW1(config-if)# exit
+
+ SVI and HSRP Configuration (VLAN 10)
+DSW1(config)# interface vlan 10
+DSW1(config-if)# ip address 192.168.10.1 255.255.255.0
+DSW1(config-if)# standby 10 ip 192.168.10.254
+DSW1(config-if)# standby 10 priority 110
+DSW1(config-if)# standby 10 preempt
+DSW1(config-if)# no shutdown
+DSW1(config-if)# exit
+
+ DHCP Server Configuration
+DSW1(config)# ip dhcp excluded-address 192.168.10.1 192.168.10.10
+DSW1(config)# ip dhcp excluded-address 192.168.10.254
+DSW1(config)# ip dhcp pool VLAN10_POOL
+DSW1(dhcp-config)# network 192.168.10.0 255.255.255.0
+DSW1(dhcp-config)# default-router 192.168.10.254
+DSW1(dhcp-config)# dns-server 8.8.8.8
+DSW1(dhcp-config)# exit
+
+---
+
+ Step 2: Configuring DSW2 (Secondary / Standby L3 Switch)
+
+DSW2 acts as the backup gateway in case DSW1 fails.
+
+DSW2> enable
+DSW2# configure terminal
+DSW2(config)# hostname DSW2
+
+ Enable IP routing
+DSW2(config)# ip routing
+
+ Create VLAN 10
+DSW2(config)# vlan 10
+DSW2(config-vlan)# name Data
+DSW2(config-vlan)# exit
+
+ LACP EtherChannel to DSW1 (G0/1 and G0/2)
+DSW2(config)# interface range gigabitEthernet 0/1 - 2
+DSW2(config-if-range)# channel-group 1 mode active
+DSW2(config-if-range)# no shutdown
+DSW2(config-if-range)# exit
+
+DSW2(config)# interface port-channel 1
+DSW2(config-if)# switchport trunk encapsulation dot1q
+DSW2(config-if)# switchport mode trunk
+DSW2(config-if)# exit
+
+ SVI and HSRP Backup Configuration (VLAN 10)
+DSW2(config)# interface vlan 10
+DSW2(config-if)# ip address 192.168.10.2 255.255.255.0
+DSW2(config-if)# standby 10 ip 192.168.10.254
+DSW2(config-if)# standby 10 priority 100
+DSW2(config-if)# standby 10 preempt
+DSW2(config-if)# no shutdown
+DSW2(config-if)# exit
+
+ Step 3: Configuring SW1 (Layer 2 Access Switch)
+
+SW1 connects the end user to the core backbone.
+
+SW1> enable
+SW1# configure terminal
+SW1(config)# hostname SW1
+
+ Create VLAN 10
+SW1(config)# vlan 10
+SW1(config-vlan)# name Data
+SW1(config-vlan)# exit
+
+ Trunk link to DSW1 (Port F0/23)
+SW1(config)# interface fastEthernet 0/23
+SW1(config-if)# switchport mode trunk
+SW1(config-if)# no shutdown
+SW1(config-if)# exit
+
+ Access port for PC2 (Port F0/1)
+SW1(config)# interface fastEthernet 0/1
+SW1(config-if)# switchport mode access
+SW1(config-if)# switchport access vlan 10
+SW1(config-if)# no shutdown
+SW1(config-if)# exit
+
+
+ 3. Verification & Testing
+
+1. Test DHCP: Go to PC2, switch the IP configuration from Static to DHCP. It should automatically receive an IP address within the 192.168.10.0/24 subnet with 192.168.10.254 as its default gateway.
+2. Check HSRP Status:
+   * Run "show standby brief" on DSW1 to confirm it is Active.
+   * Run "show standby brief" on DSW2 to confirm it is Standby.
+3. Test Failover: Shut down VLAN 10 on DSW1 (shutdown) and verify that DSW2 seamlessly takes over as the Active router within seconds.
